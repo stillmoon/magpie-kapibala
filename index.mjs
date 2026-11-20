@@ -197,7 +197,10 @@ const usage = async (getAuth) => {
     const total = toDollars(sub.amount_total ?? 0)
     const usedPct = total > 0 ? (used / total) * 100 : 0
     const name = plan?.title ? `${plan.title} 订阅剩余` : "订阅剩余"
-    const out = { windows: [{ name, amount: used, limit: total, used: usedPct, unit: "$" }], signIn: "kept" }
+    const out = { windows: [
+      { name, amount: used, limit: total, used: usedPct, unit: "$" },
+      { name: "钱包余额", balance: wallet, unit: "$" },
+    ], signIn: "kept" }
     if (sub.end_time) {
       const d = new Date(sub.end_time)
       if (!Number.isNaN(d.getTime())) out.until = d.toISOString()
