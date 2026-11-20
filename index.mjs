@@ -197,14 +197,29 @@ const usage = async (getAuth) => {
     const total = toDollars(sub.amount_total ?? 0)
     const usedPct = total > 0 ? (used / total) * 100 : 0
     const name = plan?.title ? `${plan.title} 订阅剩余` : "订阅剩余"
+    // resetsAt + span are what let magpie show the reset time and the
+    // period start (it works the start out as resetsAt less span): the
+    // reset is the subscription's next reset, else its end; the span is
+    // the reset-to-reset length, else end less start.
+    const dateOf = (v) => {
+      const d = new Date(v)
+      return Number.isNaN(d.getTime()) ? null : d
+    }
+    const resetAt = dateOf(sub.next_reset_time) ?? dateOf(sub.end_time)
+    const lastReset = dateOf(sub.last_reset_time)
+    const start = dateOf(sub.start_time)
+    const end = dateOf(sub.end_time)
+    let span = 0
+    if (resetAt && lastReset && resetAt > lastReset) span = Math.round((resetAt - lastReset) / 1000)
+    else if (end && start && end > start) span = Math.round((end - start) / 1000)
+    const window = { name, amount: used, limit: total, used: usedPct, unit: "$" }
+    if (resetAt) window.resetsAt = resetAt.toISOString()
+    if (span > 0) window.span = span
     const out = { windows: [
-      { name, amount: used, limit: total, used: usedPct, unit: "$" },
+      window,
       { name: "钱包余额", balance: wallet, unit: "$" },
     ], signIn: "kept" }
-    if (sub.end_time) {
-      const d = new Date(sub.end_time)
-      if (!Number.isNaN(d.getTime())) out.until = d.toISOString()
-    }
+    if (end) out.until = end.toISOString()
     return out
   }
   return { windows: [{ name: "钱包余额", balance: wallet, unit: "$" }], signIn: "kept" }
