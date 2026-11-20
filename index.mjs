@@ -194,9 +194,10 @@ const usage = async (getAuth) => {
     const sub = active[0]
     const plan = planById.get(sub.plan_id)
     const remaining = toDollars((sub.amount_total ?? 0) - (sub.amount_used ?? 0))
+    const total = toDollars(sub.amount_total ?? 0)
     const end = fmtDate(sub.end_time)
     const name = plan?.title ? `${plan.title} 订阅剩余` : "订阅剩余"
-    const extra = [`钱包 $${wallet.toFixed(2)}`, end ? `至 ${end}` : ""].filter(Boolean).join(" · ")
+    const extra = [`订阅 $${remaining.toFixed(2)} / $${total.toFixed(2)}`, `钱包 $${wallet.toFixed(2)}`, end ? `至 ${end}` : ""].filter(Boolean).join(" · ")
     return { windows: [{ name, balance: remaining, unit: "$", ...(extra ? { display: extra } : {}) }], signIn: "kept" }
   }
   return { windows: [{ name: "钱包余额", balance: wallet, unit: "$" }], signIn: "kept" }
