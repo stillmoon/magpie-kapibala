@@ -53,11 +53,6 @@ const toDollars = (quota) => {
   if (!Number.isFinite(n) || n <= 0) return 0
   return Math.round((n / QUOTA_PER_DOLLAR) * 100) / 100
 }
-const fmtDate = (v) => {
-  const d = new Date(v)
-  if (Number.isNaN(d.getTime())) return ""
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`
-}
 
 // usageClaim is which account (by its API key) last put the usage window
 // up for a panel token. Accounts sharing one panel token are one kapibala
@@ -189,16 +184,25 @@ const usage = async (getAuth) => {
     .filter((s) => s && s.status === "active")
   if (active.length) {
     // one window: the subscription ending latest, so a user with several
-    // active plans sees the one that lasts longest.
+    // active plans sees the one that lasts longest. It is a quota window
+    // (amount of limit), not a balance: a balance is a wallet, which
+    // magpie shows as a bare figure with no meter and no total, and its
+    // display text never renders for it. amount/limit is what makes the
+    // card say "31.32 / 400 $ · 7.8% used" (or the remaining, if magpie
+    // is set to show what is left), like other subscription cards.
     active.sort((a, b) => new Date(b.end_time ?? 0) - new Date(a.end_time ?? 0))
     const sub = active[0]
     const plan = planById.get(sub.plan_id)
-    const remaining = toDollars((sub.amount_total ?? 0) - (sub.amount_used ?? 0))
+    const used = toDollars(sub.amount_used ?? 0)
     const total = toDollars(sub.amount_total ?? 0)
-    const end = fmtDate(sub.end_time)
+    const usedPct = total > 0 ? (used / total) * 100 : 0
     const name = plan?.title ? `${plan.title} 订阅剩余` : "订阅剩余"
-    const extra = [`订阅 $${remaining.toFixed(2)} / $${total.toFixed(2)}`, `钱包 $${wallet.toFixed(2)}`, end ? `至 ${end}` : ""].filter(Boolean).join(" · ")
-    return { windows: [{ name, balance: remaining, unit: "$", ...(extra ? { display: extra } : {}) }], signIn: "kept" }
+    const out = { windows: [{ name, amount: used, limit: total, used: usedPct, unit: "$" }], signIn: "kept" }
+    if (sub.end_time) {
+      const d = new Date(sub.end_time)
+      if (!Number.isNaN(d.getTime())) out.until = d.toISOString()
+    }
+    return out
   }
   return { windows: [{ name: "钱包余额", balance: wallet, unit: "$" }], signIn: "kept" }
 }
